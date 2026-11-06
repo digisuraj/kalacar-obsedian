@@ -112,6 +112,10 @@ See [[16-progress-checklist]] Stages 8, 8A and 8B. These change at launch:
 - Database password: exposed in a screenshot.
 - Google client secret: exposed in chat.
 
+## If a deploy fails
+
+Read the build log in hPanel under Deployments. "OS can't spawn worker thread" means the build started too many workers for Hostinger's thread limit. `experimental.cpus` in `kalacar-app/next.config.ts` limits them to 2. The site keeps running its last good build until a new one succeeds.
+
 ## Database changes
 
 Tables and columns are added automatically when the shop first connects. Nothing to do by hand. Recent additions: `kalacar_push_devices`, and `updated_at` on `kalacar_orders`.
