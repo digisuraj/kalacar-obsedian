@@ -2,7 +2,7 @@
 title: 19 — How Kalacar Works (feature walkthrough)
 tags: [kalacar, overview, flows, explainer]
 status: active
-updated: 2026-11-05
+updated: 2026-11-06
 ---
 
 # 19 — How Kalacar Works
@@ -25,6 +25,8 @@ Open any of these in Obsidian (Excalidraw view). They are generated from `flows/
 | 6 | [[flows/06-coupons.excalidraw\|Coupons]] | Owner rules, customer preview, re-check at payment, when a use counts or returns |
 | 7 | [[flows/07-sign-in-and-account.excalidraw\|Sign-in and account]] | Two separate doors (shop / dashboard), owner list, addresses |
 | 8 | [[flows/08-data-entities.excalidraw\|Data entities]] | Users, sessions, addresses, products, colours, orders, items, coupons, settings, payment events |
+| 9 | [[flows/09-live-updates.excalidraw\|Live updates]] | How a saved change reaches open pages through Pusher, with timer backups; hidden and idle shop tabs make no requests. Developer guide: [[20-live-updates-architecture]] |
+| 10 | [[flows/10-website-content.excalidraw\|Website content]] | How the owner changes pages, home sections, reviews and product settings from the dashboard, and the Contact form. |
 
 The one-page overview is [[19-kalacar-flows.excalidraw]].
 
@@ -174,11 +176,11 @@ Each tab has its own address (`/orders`, `/products`, `/customers`, `/coupons`, 
 | Tab | What the owner does there |
 |---|---|
 | **Overview** | Today's and this month's revenue, orders, average order value, low stock; an inbox of things needing action. Refreshes every 5 s. |
-| **Orders** | Filter by status; open an order; choose a delivery status from the dropdown (Not started, Preparing, Dispatched, Completed) and press **Save**, in the list or inside the order. The choice stays highlighted until saved, and can go back to correct a mistake. Use **WhatsApp**, **SMS** or **Email** on a paid order to open a message filled from that status's template, then press Send in that app. **Call** opens the customer's number. Click **Print label** to print the delivery label on the top half of an A4 sheet. After handing the parcel over, choose Trackon or India Post, enter the tracking ID and add an optional note; cancel unpaid orders; record a refund (and optionally return stock). Refreshes every 2.5 s. |
+| **Orders** | Updates by itself as soon as an order changes, through a live signal, or within about 15 seconds if live updates are down. A payment can also be recovered by asking Razorpay about recent unpaid orders once a minute while a dashboard is open. Filter by status; open an order; choose a delivery status from the dropdown (Not started, Preparing, Dispatched, Completed) and press **Save**, in the list or inside the order. The choice stays highlighted until saved, and can go back to correct a mistake. Use **WhatsApp**, **SMS** or **Email** on a paid order to open a message filled from that status's template, then press Send in that app. **Call** opens the customer's number. Click **Print label** to print the delivery label on the top half of an A4 sheet. After handing the parcel over, choose Trackon or India Post, enter the tracking ID and add an optional note; cancel unpaid orders; record a refund (and optionally return stock). Refreshes every 2.5 s. |
 | **Products** | Photos are saved in the database, so they survive redeploys. Edit price and stock per colour right in the list (each row saves on its own, with an up/down stepper); full editor for photos, colours, badge, tagline, specs, highlights and info sections; add or delete products. Search by name, category or colour, and filter by category or stock level (In stock, Low stock, Out of stock). |
 | **Customers** | Summary (customers, buyers, orders and spend per buyer), search, filters, sort; open a customer for Email / Call / WhatsApp, saved addresses, totals and order history (click an order to open it). The owner's own account is listed with an **Owner** tag but not counted. Live. |
 | **Coupons** | Create, edit, switch on/off, delete unused coupons (see section 5). Live. |
-| **Settings** | Print label: wording for Deliver to, From (optional) and Order details, with variables and a preview. Shop status: switch the shop between Live and Coming soon. Shop banner (a separate card): show a message at the top of shop pages. Razorpay status: read-only, shows test or live, whether checkout can take payments and whether automatic payment updates are set up; keys are never shown. Customer message templates: WhatsApp message, SMS message, and email subject and message for each delivery status, with variables and a preview. Categories: add, rename (its products update too), delete if no product uses it. Products choose a category from a dropdown, and the Products tab and shop filters follow them. Gift packaging: on/off, price, title, description, with a cart preview. |
+| **Settings** | Print label: wording for Deliver to, From (optional) and Order details, with variables and a preview. Shop status: switch the shop between Live and Coming soon. Shop banner (a separate card): show a message at the top of shop pages. Website link: the address the Visit website link in the menu opens in a new tab. Order alerts: while the dashboard is open, a new paid order plays a sound (on/off per browser) and adds to a count on the browser tab and Orders menu; opening Orders clears it. Each device can also turn on pop-up alerts that arrive with the dashboard closed; clicking one opens the order, and they carry no customer address or phone number. Razorpay status: read-only, shows test or live, whether checkout can take payments and whether automatic payment updates are set up; keys are never shown. Customer message templates: WhatsApp message, SMS message, and email subject and message for each delivery status, with variables and a preview. Categories: add, rename (its products update too), delete if no product uses it. Products choose a category from a dropdown, and the Products tab and shop filters follow them. Gift packaging: on/off, price, title, description, with a cart preview. |
 
 ```mermaid
 flowchart LR
@@ -199,6 +201,14 @@ Users (with sessions and saved addresses) place **orders**; each order has **ord
 ## 8c. Store policies (drafts)
 
 `/shipping`, `/returns`, `/safe-transit`, `/privacy` and `/terms` describe how the shop actually works. They are linked from the home footer and beside Pay, and stay out of search results while they are drafts. Anything the owner hasn't decided shows as a highlighted "To confirm" item (13 today); none may remain before launch.
+
+## 8f. Changing the website from the dashboard
+
+**Pages:** the Home Page settings, plus About, Contact, FAQs, Shipping, Returns, Safe Transit, Privacy and Terms, with a text editor and Google fields. **Reviews:** real customer reviews, photos and YouTube or Instagram videos, per product or for the home page. Stars and counts are worked out from these. **Inquiries:** messages from the Contact page. **Settings** has four tabs: Shop, Products, Orders, and Cart and payments. Product page settings cover the offer, how it's made, FAQs, low stock wording, sticky bar, and real activity: viewers, recent purchases and sold this week, all off until turned on. **Product editor:** description and Frequently Bought Together. If settings can't load, the shop uses built-in defaults. A page with "To confirm" items shows a draft notice and stays out of Google.
+
+## 8e. Live updates
+
+When something changes, the server tells Pusher, and Pusher tells the open pages to reload that data from Kalacar's own server. It carries no customer details and doesn't decide payments. If it's unavailable, pages update more slowly using timers. A hidden shop tab, or one idle for 30 minutes, makes no requests. Full explanation: [[20-live-updates-architecture]].
 
 ## 8d. Coming soon and the banner
 

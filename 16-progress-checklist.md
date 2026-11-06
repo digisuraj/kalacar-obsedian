@@ -61,6 +61,8 @@ This is the **single execution checklist** for building Kalacar. Work through it
 
 **Added 2026-11-06 (owner request):** new-order alerts by Telegram, browser push, and sound and count in the dashboard, all three to be built (Stage 5.2C).
 
+**Added 2026-11-06 (owner request, do later):** Pusher setup and live-update testing (Stage 5.2D). Checking the friend's site on the same Hostinger account also waits; it needs the owner to lift the `AGENTS.md` scope rule first.
+
 **Next up (owner-agreed order 2026-11-04):** 1) ✅ rebuild regression test data (done); 2) ✅ 5g spec cards + highlights + the generic delivery line (done); 3) ✅ 5h recommended products (done); 4) ✅ P4 #13 icon pass (done); 5) ✅ P3 #10 Customers page (done); 6) ✅ P3 #11 Coupons (done); 7) policy page drafts + Google-first sign-in. Delivery fee/final total (P2 #6) later.
 
 
@@ -294,14 +296,14 @@ Keep these visible so supporting-note details do not become accidental v1 commit
 - [x] Missing-value notice and blocked states; Copy email and Copy SMS in View details. Call has nothing to copy; the number shows in View details.
 - [ ] Tests: done with a temporary in-memory API at 1280px and 390px, including `&`, `#`, Hindi, line breaks, bad contact details, missing tracking note, empty template and unsaved status. **Remaining:** owner check signed in with real orders; WhatsApp on Android, iPhone, Windows and the desktop app; a computer with no default mail app.
 
-### 5.2C — New-order alerts for the owner (owner request 2026-11-06; not built)
+### 5.2C — New-order alerts for the owner (owner request 2026-11-06; sound and count built, browser push built and untested on a real device, Telegram later)
 
 > **Goal:** the owner and friend hear about every paid order quickly, so no order is missed and it can be packed and shipped. Build all three channels, so one failing or being switched off doesn't mean a missed order.
 
 **Rules for all three**
-- [ ] Alert only when payment is confirmed, whichever way it arrives (checkout, Retry, sync or webhook). No alert for failed or unfinished payments.
-- [ ] One alert per order, even if the payment is confirmed twice.
-- [ ] A failed alert never changes or blocks the order; it stays in Orders, and the failure is logged without customer details.
+- [x] Alert only when payment is confirmed, whichever way it arrives (checkout, Retry, sync or webhook). No alert for failed or unfinished payments.
+- [x] One alert per order, even if the payment is confirmed twice (only the first change to paid sends one).
+- [x] A failed alert never changes or blocks the order; it stays in Orders, and the failure is logged without customer details.
 - [ ] Set up the Razorpay webhook, so an order is confirmed and alerted even if the customer closes the page right after paying (see Stage 7).
 
 **1. Telegram**
@@ -310,16 +312,36 @@ Keep these visible so supporting-note details do not become accidental v1 commit
 - [ ] Test with a test-mode payment, including a repeat confirmation and Telegram being unavailable.
 
 **2. Browser push**
-- [ ] Add a dashboard setting to turn on alerts per device, for owner-listed accounts only, and to turn them off again.
-- [ ] Show a pop-up for each paid order that opens that order when clicked, with the dashboard closed. No customer address or phone number.
-- [ ] Remove a device from the list when it stops accepting alerts.
+- [x] Add a dashboard setting to turn on alerts per device, for owner-listed accounts only, and to turn them off again. Signing out also turns them off for that device.
+- [x] Show a pop-up for each paid order that opens that order when clicked, with the dashboard closed. No customer address or phone number. **Built 2026-11-06; not yet seen working on a real device.**
+- [x] Remove a device from the list when it stops accepting alerts.
 - [ ] **Needs owner:** allow notifications on each device. iPhone needs the dashboard added to the Home Screen first.
-- [ ] Test on the owner's computer, Android and iPhone.
+- [ ] Test on the owner's computer, Android and iPhone. In Brave, "Use Google services for push messaging" must be on. On the hosted shop, add `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` and `VAPID_SUBJECT` with new keys.
 
 **3. Sound and count in the dashboard**
-- [ ] Play a sound when a new paid order arrives while the dashboard is open, with an on/off setting. Browsers may hold the sound until the owner clicks the page once, so tell the owner when that happens.
-- [ ] Show the number of new orders on the browser tab and the Orders menu item, and clear it once the owner has seen them.
-- [ ] Don't alert for orders that already existed when the page opened, and don't repeat the sound across open tabs.
+- [x] Play a sound when a new paid order arrives while the dashboard is open, with an on/off setting. Browsers may hold the sound until the owner clicks the page once, so tell the owner when that happens.
+- [x] Show the number of new orders on the browser tab and the Orders menu item, and clear it once the owner has seen them.
+- [x] Don't alert for orders that already existed when the page opened, and don't repeat the sound across open tabs. **Remaining check 2026-11-06:** the two-tab case and the "click to turn on sound" note were not seen working.
+
+### 5.2D — Live updates across the shop and dashboard (owner request 2026-11-06; working locally with real Pusher; full payment test pending). Guide: [[20-live-updates-architecture]]
+
+> **Why:** Hostinger's Node.js hosting doesn't accept incoming WebSockets and stops any request after 120 seconds, so it can't hold live connections to open pages. Pusher holds those connections instead. The server sends Pusher an empty signal after a change is saved, and open pages reload that data from Kalacar's own server. Hidden or idle shop tabs disconnect, so a tab left open doesn't keep making calls.
+
+- [x] **Done 2026-11-06 by owner:** created a free Pusher Channels app (cluster `ap2`) and added `PUSHER_APP_ID`, `PUSHER_KEY`, `PUSHER_SECRET` and `PUSHER_CLUSTER` to `kalacar-app/.env.local`. Never paste them into chat, notes or screenshots. Free plan: 100 connections at once, 200,000 messages a day; next plan $49 a month (checked 2026-11-06).
+- [ ] Test real signals with the keys: payment to dashboard, delivery status to the customer's Account page, stock and price to the shop, two owners at once, a different account on each site.
+- [ ] Test that hidden tabs and tabs idle for 30 minutes make no calls, and that coming back reloads once. **Done 2026-11-06 for hidden tabs; the 30-minute rule isn't tested yet.**
+- [x] Test the fallback with Pusher failing: shop refreshed once at about a minute on a production build; dashboard showed orders in about 10–12 seconds.
+- [ ] Add the same four keys to the hosted shop's settings.
+- [ ] Set up the Razorpay webhook, and a Hostinger cron job for the recheck of recent unpaid orders, so a payment is caught with no dashboard open.
+- [ ] Add Pusher to the Privacy page as a service provider. Signals carry no customer details; customer channel names include the account ID.
+
+**Status 2026-11-06:** real signals tested on the shop channel and the owner channel (pretend paid order shown about 0.14 seconds after sending). Not yet tested: a real test payment, real saves from a signed-in dashboard, a real customer Account page.
+
+### 5.2E — Automatic tests (owner request 2026-11-06)
+
+- [x] Unit tests in both projects (`npm test`): payments, Razorpay status, channel access, Pusher failures, shared product list, coupon uses, message templates, website link, browser alerts, phone numbers, message filling, email links.
+- [x] Browser tests in both projects (`npm run test:browser`) at phone and desktop sizes with pretend data: every page opens and fits, bag, sold-out, closed shop, Account, order buttons, Products filters, Settings cards, new-order count, no constant calling, and failures not harming pages.
+- [ ] Not covered yet: Razorpay payment window, Google sign-in, dark theme, saving through the real server. These need a separate test database (`QA_DB_NAME`) or a manual check.
 
 ### 5.3 — Products & catalogue management
 - [x] Price & stock inline editing controls synced to storefront via API.
@@ -356,6 +378,68 @@ Keep these visible so supporting-note details do not become accidental v1 commit
 - *Dropped:* Hostinger AI product generator (unnecessary overhead; owner provides authentic deity details).
 - *Dropped:* Printful print-on-demand & marketplace extension promotions.
 - *Dropped:* Complex multi-tier role permissions (single owner store).
+
+### 5.8 — Owner's friend's requests: home page, product page, Pages (built 2026-11-06 on `feature/2026-11-06`; signed-in check pending)
+
+> From WhatsApp text, 2 marked-up reference images and 6 voice notes. "Backend" and "admin panel" in his notes mean the **owner dashboard**. Theme stays as it is; reference images are for ideas only, so no text, design or images are copied. Voice notes were machine-transcribed from mixed Hindi and Marathi, so confirm unclear points with him.
+
+**A. Dashboard: settings for every product** (Settings > Products > Product page settings)
+- [x] Offer box under Add to bag, editable, with on/off. **New.** Text only: a matching coupon must exist in Coupons.
+- [x] "How it's made" founder message, name and photo. **New.**
+- [x] Common FAQs. **New.**
+- [x] Low stock message with threshold and wording, using the real number. **Was partly built:** message existed with fixed wording.
+
+**B. Dashboard: each product's edit page**
+- [x] Product description. **New field**, alongside the existing tagline, short description, specs, highlights and info sections.
+- [x] Frequently Bought Together, choose up to 2, with Add all to bag. **New.**
+- [x] Customer reviews with text, photos and video, from a new Reviews section. **New.**
+- [ ] Google Reviews embed. Left for later: needs a Google billing account and a Place ID.
+
+**C. Product page**
+- [x] Sticky Add to bag and Buy now bar. **New.** On phones, Add to bag is hidden to fit; Buy now stays.
+- [x] End of page "Explore more" button, editable. **New.**
+- [x] WhatsApp help button. **New**; the number was already used elsewhere.
+- [x] Colours are his "variants". **Already built.**
+- [x] "You may also like". **Already built.**
+- [ ] Red marks on his image: most of those parts never existed on Kalacar, so nothing was removed. **Confirm with him.**
+- [ ] From his image, not built: pincode delivery check and dispatch timeline. Delivery areas are still an owner decision (Stage 4).
+
+**D. Dashboard: Pages section**
+- [x] New Pages section for Home Page, About, Contact, FAQs, Shipping, Returns, Safe Transit, Privacy and Terms.
+- [x] Rich text editor, cleaned on save and on display. **Was partly built:** fixed drafts now become the editable starting text.
+- [x] SEO title and meta description on each page. Sitemap and robots are still in Stage 7.
+- [x] Footer links built from Pages, with on/off for each.
+- [x] Contact form saved to a new Inquiries section, with limits and a spam trap. **New.**
+- [ ] Email alert for new inquiries. Needs an email provider.
+
+**E. Dashboard: Home Page settings** (every section has show/hide, and inner fields have their own checkbox)
+- [x] Hero: product, background photo, title, description, two buttons. **New**; the old fixed intro is now the default.
+- [x] Hero Buy now adds to the bag and opens it, asking for a colour first if more than one is in stock, without leaving the page.
+- [x] Explore button: custom link or scroll on the page.
+- [x] First launch grid with editable title and chosen products. **New.**
+- [x] Coming Soon: image and name, no price, stars or button. **New.**
+- [x] Collections: photo per category, circles, 2 per row on phones. **Was partly built:** categories and filter existed.
+- [x] Text and video reviews on the home page. **New.** YouTube and Instagram links.
+- [x] Why choose us: new numbered-list style, editable. **New.**
+- [x] Our Story with founder photo. **New.**
+- [x] Newsletter section: Kalacar never had one, so nothing to remove.
+
+**F. Real versions of the requests that were made up**
+The owner asked to build these as requested. Claude declined to make up figures, because it misleads customers, and built versions using real data instead. All are off until turned on in Settings.
+- [x] Viewer count: real visitors through Pusher, shown from the chosen minimum. Not tested with real visitors.
+- [x] Recent purchases: real paid orders from the last 7 days. Shows "Someone" unless first names are turned on; add that to the Privacy page before turning it on.
+- [x] Star rating and review count: worked out from entered reviews only.
+- [x] "Sold this week": real paid orders, from a chosen minimum. Replaces "high demand today".
+
+**G. Settings grouped by purpose (owner request 2026-11-06)**
+- [x] Tabs in Settings: Shop, Products, Orders, Cart and payments. Unsaved typing survives switching tabs, each tab shows "Unsaved", and the address remembers the open tab.
+
+**H. Still needed from the owner or friend**
+- [ ] Real support email. No dummy address was added: a dummy on a live page would lose customer emails.
+- [ ] Founder story, name and photos.
+- [ ] The 13 "To confirm" policy items, plus the new ones on About, Contact and FAQs. Pages stay out of Google until these are gone.
+- [ ] Filling in the new sections. Most start switched off until they have content.
+- [ ] Signed-in check of every editor against the real server. Tests so far use pretend data.
 
 ## 5A — Project separation (completed early; maintain as an invariant)
 
@@ -613,6 +697,17 @@ Work through these day by day as time allows. Every item marked 🔴 is a **laun
 | 2026-11-06 | Recorded new-order alerts in the checklist | Owner chose three channels so no order gets missed: Telegram, browser push, and sound and count in the dashboard (Stage 5.2C). Not built yet. |
 | 2026-11-06 | Added SMS and Call buttons to Orders | Orders and View details now show SMS and Call beside WhatsApp and Email. SMS has its own template per status in Settings, with Copy SMS in View details. Blocked with a reason when the phone number, template or a variable is missing. Tested with a temporary in-memory API at 375, 1200 and 1280 widths, including Hindi, `&`, a number with a country code and a leading 0. **Remaining:** owner check with real orders; SMS prefill and Call on real Android and iPhone; Mac or Windows may open nothing or only a linked app. Flow drawing and chapter 19 updated. |
 | 2026-11-06 | Added Razorpay status to Settings | New owner-only `GET /api/admin/payment-status` returns yes/no answers only, and a read-only Settings card explains test, live key, missing secret and not set up, plus the webhook state. A live key shows checkout as closed, because checkout accepts test keys only for now. Signed-out request refused (401). Card checked with a temporary in-memory API at phone width, including the failure message. **Remaining:** owner check signed in. No flow changed. |
+| 2026-11-06 | Added new-order sound and count, and a dashboard favicon | While the dashboard is open it checks every 10 seconds. A newly paid order (or Paid after cancel) plays a sound and adds to a count on the browser tab and Orders menu; opening Orders clears it. Orders already there when the page opened do not alert. Sound on/off and a test sound are in Settings, saved per browser. Tested with a temporary in-memory API, including an unpaid order that later becomes paid, sound off, and phone width. Not checked: two tabs at once, and the "click to turn on sound" note. Owner check pending with a real test payment. Flow drawing and chapter 19 updated. |
+| 2026-11-06 | Replaced "Owner space" with a Visit website link | The dashboard menu now shows Visit website under the Kalacar name, opening the customer website in a new tab. The address is set in Settings, stored in `kalacar_settings` as `shop_link`, and defaults to `NEXT_PUBLIC_SITE_URL`. Only https addresses are accepted (http for localhost), so a saved link cannot run code. Tested with a temporary in-memory API on desktop and phone. Owner check pending in Brave. |
+| 2026-11-06 | Built browser push alerts for new paid orders | New owner-only `/api/admin/push` routes, table `kalacar_push_devices`, `web-push`, a service worker in the dashboard, and a section in Settings > Order alerts. Alerts fire only on the first change to paid or Paid after cancel, in `markOrderPaid` and the webhook; a failure never affects the order. Saved addresses are limited to the browsers' own push services. Checked: signed-out requests refused (401), address and message rules, not-set-up and blocked screens, production build. **Not checked:** a real pop-up on any device, a real paid order, iPhone Home Screen. |
+| 2026-11-06 | Cut repeated product calls; made order updates near real time | **Shop:** one shared product request instead of two every 2.5 seconds: on opening, on returning to the tab, and once a minute while visible; the server reuses the list for 15 seconds; a brief failure keeps products on screen. **Dashboard:** a small `/api/admin/orders/changes` check every 5 seconds (new `updated_at` column on `kalacar_orders`) reloads orders, numbers, stock and alerts only when something changed; once-a-minute backstop; a browser alert makes open tabs check at once. **Payments:** that check also asks Razorpay about recent unpaid orders once a minute, so a payment the shop never heard about still appears. **Account page:** refreshes on returning to the tab and once a minute. Checked: pretend payment shown in about 4 seconds with no loading flash, shop request count, columns read-only in the database, signed-out refused. **Not checked:** a real test payment end to end, the payment recheck against Razorpay, the instant browser-alert path. Webhook still to be set up. SSE not used: Hostinger support for long connections is unconfirmed. |
+| 2026-11-06 | Recorded Pusher setup for later | Owner deferred creating the Pusher account and testing live updates; steps are in Stage 5.2D. |
+| 2026-11-06 | Connected live updates to real Pusher and wrote the architecture guide | Owner added the keys. Tested real signals on the shop and owner channels, hidden tabs making no requests, one reload on returning, and the fallback with live updates off. Replaced the 5-second dashboard check with live signals plus a 60-second check (15 seconds if not connected). Added flow drawing 09 and [[20-live-updates-architecture]]. A real test payment is still to be checked. |
+| 2026-11-06 | Tested Pusher failures and added automatic tests | With Pusher unreachable or a wrong key, shop and dashboard kept working on timers; fixed signals so they can never fail a save, and fixed `/api/realtime/config` being frozen at build time. Added unit and browser tests to both projects (Stage 5.2E): shop 35 unit and 36 browser checks, dashboard 9 unit and 36 browser checks, all passing. Upgraded dev-only `@types/node` to 22 in the shop for Vitest. |
+| 2026-11-06 | Recorded the friend's home page, product page and Pages requests | Stage 5.8, from his WhatsApp text, 2 images and 6 voice notes. Not started; waits for current work to be tested and merged. Four requests about made-up viewer counts, sales pop-ups, reviews and demand need a decision first. |
+| 2026-11-06 | Built the friend's home page, product page and Pages requests | Stage 5.8: dashboard Pages, Home Page settings, Reviews, Inquiries and Product page settings; shop home sections, product additions, editable pages and contact form; Settings grouped into 4 tabs. New tables `kalacar_pages`, `kalacar_inquiries`, `kalacar_reviews`; new columns `description` and `bundle_ids` on products and `image` on categories. Added commented `.env.example` files, comments in `.env.local`, and [[21-production-settings]]. Made-up viewer, sales and review figures replaced by real-data versions. Automatic tests pass with pretend data; signed-in saves not yet checked, and nothing merged. |
+| 2026-11-06 | Prepared the code for kalacar.in | Allowed `kalacar.in`, `www.kalacar.in` and `admin.kalacar.in` for sign-in, and added `robots.txt`, blocking search engines until `KALACAR_ALLOW_SEARCH=true`. On the feature branch; not connected yet. Steps are in [[21-production-settings]]. Hosted shop did not take the merged code: deployment to be checked. |
+| 2026-11-06 | Connected kalacar.in to the shop and merged to main | The WordPress site moved to a temporary Hostinger address and `kalacar.in` now serves the shop, using the same temporary database. Shop `68d3351` and dashboard `408a1b0` are on `develop` and `main`. **Open at day end:** check the shop deployed the latest code, dashboard reaching `kalacar.in` through `KALACAR_SHOP_URL`, Shop status back to Coming soon while test products are live, and `admin.kalacar.in` not connected yet. |
 | 2026-11-04 | End-of-day merge to `develop` | Fast-forwarded `develop` to `feature/2026-11-04` in both repos and pushed (no merge commits, no conflicts): `kalacar-app` `develop` = `6368e0c` (8 new commits: Customers API, owner rows, separate owner sign-in, coupons, and earlier work since `cbc8fa0`), `kalacar-dashboard` `develop` = `61d66b2` (6 new commits: Customers tab, live refresh, owner sign-in, Coupons tab). `main` unchanged. The Obsidian vault is not a Git repository (not created; owner to decide). Next session: new dated branch from `develop`; then policy page drafts + Google-first sign-in. |
 | 2026-11-04 | P3 #11 Coupons (Stage 5.5) + How Kalacar Works chapter | Built (`kalacar-app` `6368e0c`, `kalacar-dashboard` `61d66b2`). Owner decisions: discount on murtis only; use counted at order, returned on cancel or payment-setup failure; refunds don't return it; once per customer on by default. Tests 35/35 (owner-only, 5 invalid inputs refused, duplicate code, preview maths, min spend, expired, expires-today, scheduled, total kept ≥ ₹1, off coupon, checkout with an invalid coupon refused with stock and orders unchanged, Coupons tab and editor at 1280px and 390px, cart apply/remove at both widths). **Incident during testing (fixed):** a crashed test run left its coupon active, so a later checkout check created one real unpaid test order for tech boot (stock 5→4); it was cancelled through the owner cancel path (stock back to 5) and deleted, orders back to 3, coupons 0, leftover sessions removed; an unpaid Razorpay test-mode order remains on Razorpay's side (no money). The test script now stops if setup fails and only runs checkout when the database confirms the coupon is off. Fixed during the work: the coupon box was squeezed into the summary's row layout on phones. Also added [[19-how-kalacar-works]] and the Excalidraw drawing, and recorded the separate-sites rule in AGENTS.md. Next: policy page drafts + Google-first sign-in. |
 | 2026-11-04 | Bug fix (owner report): shop sign-in logged the owner out of the dashboard | Cause: on localhost the shop (:3000) and dashboard (:5173) share cookies (per host, not port), and both used `kalacar_customer_session`, so the last sign-in won on both sites. Fixed (`kalacar-app` `8ced6b2`, `kalacar-dashboard` `cdfbd34`): the dashboard has its own `kalacar_owner_session`, issued only to owner-listed Google accounts via `scope=owner`; all admin routes read only that cookie; session, sign-out, Google state cookies and the Google rate limit are separate per site. Audit of other shared state: browser storage (cart, checkout draft, theme, banner) is already per site; no other admin route reads the shop session. Tests 17/17: dashboard works while tech boot is signed in to the shop, each side reports its own account, owner signed in on the shop only can't open the dashboard, customer token in the owner cookie → 403, separate state cookies, both sites open together at 1280px and 390px, each sign-out clears only its own site. Temporary sessions removed (including 4 left by crashed check scripts; 0 left). **Owner action:** sign in to the dashboard once more (the old shared login no longer opens it). |
